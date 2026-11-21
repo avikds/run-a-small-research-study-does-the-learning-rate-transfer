@@ -479,8 +479,82 @@ def best_lr(points):
         "status": "fit"
     }
 
-# Step 8 - paired_penalty (not yet solved)
-# TODO: implement
+# Step 8 - paired_penalty
+def paired_penalty(runs_a, runs_b, n_boot=2000, seed=0):
+    """Mean loss difference A - B, a paired bootstrap interval over examples, per-seed differences and a verdict."""
+
+    # Convert the per-seed validation loss arrays into NumPy arrays.
+    a = np.asarray(runs_a, dtype=float)
+    b = np.asarray(runs_b, dtype=float)
+
+    # Ensure both settings contain matching seed and example dimensions.
+    if a.shape != b.shape:
+        raise ValueError("runs_a and runs_b must have matching shapes.")
+
+    if a.ndim != 2 or a.shape[0] == 0 or a.shape[1] == 0:
+        raise ValueError(
+            "runs_a and runs_b must have shape (seeds, examples) "
+            "with non-empty dimensions."
+        )
+
+    if n_boot <= 0:
+        raise ValueError("n_boot must be a positive integer.")
+
+    # Calculate paired differences: validation loss of A minus B.
+    # Shape: (number of seeds, number of validation examples).
+    diff = a - b
+
+    # Calculate the mean difference separately for each seed.
+    per_seed = diff.mean(axis=1)
+
+    # Average the per-example differences across all seeds.
+    # This preserves the pairing of validation examples.
+    d = diff.mean(axis=0)
+
+    # Number of validation examples.
+    n = d.shape[0]
+
+    # Create a reproducible random generator for bootstrap sampling.
+    rng = np.random.default_rng(seed)
+
+    # Draw bootstrap samples by resampling validation examples
+    # with replacement, using one shared index matrix.
+    idx = rng.integers(
+        0,
+        n,
+        size=(n_boot, n)
+    )
+
+    # Calculate the mean paired difference for each bootstrap sample.
+    means = d[idx].mean(axis=1)
+
+    # Calculate the 95% percentile bootstrap confidence interval.
+    lo, hi = np.percentile(means, [2.5, 97.5])
+
+    # Determine the verdict using both the confidence interval
+    # and the direction of the differences across every seed.
+    if lo > 0 and np.all(per_seed > 0):
+        verdict = "a is worse"
+
+    elif hi < 0 and np.all(per_seed < 0):
+        verdict = "a is better"
+
+    else:
+        verdict = "can't tell"
+
+    # Return all numerical results rounded to four decimal places.
+    return {
+        "diff": round(float(d.mean()), 4),
+        "ci": (
+            round(float(lo), 4),
+            round(float(hi), 4)
+        ),
+        "per_seed": [
+            round(float(value), 4)
+            for value in per_seed
+        ],
+        "verdict": verdict
+    }
 
 # Step 9 - stability_edge (not yet solved)
 # TODO: implement
