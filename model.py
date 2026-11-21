@@ -328,8 +328,77 @@ def lr_sweep(params, widths, lrs, seeds, data, steps=300, batch_size=128):
 
     return rows
 
-# Step 6 - summarize (not yet solved)
-# TODO: implement
+# Step 6 - summarize
+def summarize(rows):
+    """{(param, width): [one point per lr, sorted by lr]} with mean, std, n and diverged."""
+
+    # Group experiment results by parametrization, width, and learning rate.
+    grouped = {}
+
+    for row in rows:
+        key = (row["param"], row["width"])
+        lr = row["lr"]
+
+        # Create the nested dictionaries when necessary.
+        if key not in grouped:
+            grouped[key] = {}
+
+        if lr not in grouped[key]:
+            grouped[key][lr] = []
+
+        # Store each run belonging to the current configuration.
+        grouped[key][lr].append(row)
+
+    # Store the summarized learning-rate curves.
+    summary = {}
+
+    # Process each parametrization and network width.
+    for key, lr_groups in grouped.items():
+
+        summary[key] = []
+
+        # Sort learning rates in ascending order.
+        for lr in sorted(lr_groups):
+
+            runs = lr_groups[lr]
+
+            # Count the total number of runs at this learning rate.
+            n = len(runs)
+
+            # Check whether any run diverged.
+            diverged = any(run["diverged"] for run in runs)
+
+            # If any run diverged, mark the entire point as diverged.
+            if diverged:
+                mean = None
+                std = None
+
+            else:
+                # Collect validation losses from all runs.
+                losses = [run["val_loss"] for run in runs]
+
+                # Calculate the mean validation loss.
+                mean = round(float(np.mean(losses)), 4)
+
+                # Calculate sample standard deviation (ddof=1).
+                # Standard deviation is None when fewer than 2 runs exist.
+                if n >= 2:
+                    std = round(float(np.std(losses, ddof=1)), 4)
+                else:
+                    std = None
+
+            # Store the summarized result for this learning rate.
+            point = {
+                "lr": lr,
+                "mean": mean,
+                "std": std,
+                "n": n,
+                "diverged": diverged
+            }
+
+            summary[key].append(point)
+
+    return summary
 
 # Step 7 - best_lr (not yet solved)
 # TODO: implement
