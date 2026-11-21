@@ -13,7 +13,7 @@ python scaffold.py
 - [x] **1.** build_mlp
 - [x] **2.** make_optimizer
 - [x] **3.** coord_check
-- [ ] **4.** train_run
+- [x] **4.** train_run
 - [ ] **5.** lr_sweep
 - [ ] **6.** summarize
 - [ ] **7.** best_lr

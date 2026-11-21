@@ -188,8 +188,99 @@ def coord_check(param, widths, data, lr=2 ** -10, steps=1, seed=0):
 
     return results
 
-# Step 4 - train_run (not yet solved)
-# TODO: implement
+# Step 4 - train_run
+def train_run(width, param, lr, seed, data, steps=300, batch_size=128):
+    """Train one model; return val_loss, per_example losses, diverged and steps_done."""
+
+    # Unpack the training and validation datasets.
+    X_train, Y_train, X_val, Y_val = data
+
+    # Build the model and its optimizer.
+    model = build_mlp(width, param, seed)
+    optimizer = make_optimizer(model, lr, param)
+
+    # Create a dedicated random generator for reproducible batch sampling.
+    g = torch.Generator().manual_seed(1000 + seed)
+
+    # Number of training examples.
+    n_train = X_train.shape[0]
+
+    # Track the number of successful optimizer updates.
+    steps_done = 0
+
+    # Training loop.
+    for _ in range(steps):
+
+        # Randomly sample a mini-batch using the dedicated generator.
+        idx = torch.randint(
+            0,
+            n_train,
+            (batch_size,),
+            generator=g
+        )
+
+        X_batch = X_train[idx]
+        Y_batch = Y_train[idx]
+
+        # Clear gradients from the previous iteration.
+        optimizer.zero_grad()
+
+        # Forward pass.
+        predictions = model(X_batch)
+
+        # Calculate mean squared error across the batch and all outputs.
+        loss = torch.mean((predictions - Y_batch) ** 2)
+
+        # Check for divergence before performing the optimizer update.
+        if not torch.isfinite(loss).item() or loss.item() > 100:
+
+            return {
+                "val_loss": None,
+                "per_example": None,
+                "diverged": True,
+                "steps_done": steps_done
+            }
+
+        # Backpropagation.
+        loss.backward()
+
+        # Update model parameters.
+        optimizer.step()
+
+        # Increment the number of completed optimizer updates.
+        steps_done += 1
+
+    # Evaluate the trained model on the complete validation dataset.
+    with torch.no_grad():
+
+        val_predictions = model(X_val)
+
+        # Calculate squared error averaged over the four output dimensions
+        # for each individual validation example.
+        per_example = (
+            (val_predictions - Y_val) ** 2
+        ).mean(dim=1).cpu().numpy()
+
+    # Calculate the overall validation loss.
+    val_loss = float(per_example.mean())
+
+    # Check whether any validation loss is non-finite.
+    if not np.all(np.isfinite(per_example)) or not np.isfinite(val_loss):
+
+        return {
+            "val_loss": None,
+            "per_example": None,
+            "diverged": True,
+            "steps_done": steps
+        }
+
+    # Return the completed training results.
+    return {
+        "val_loss": val_loss,
+        "per_example": per_example,
+        "diverged": False,
+        "steps_done": steps_done
+    }
 
 # Step 5 - lr_sweep (not yet solved)
 # TODO: implement
