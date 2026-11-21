@@ -130,8 +130,63 @@ def make_optimizer(model, lr, param, base_width=BASE_WIDTH):
 
     return optimizer
 
-# Step 3 - coord_check (not yet solved)
-# TODO: implement
+# Step 3 - coord_check
+def coord_check(param, widths, data, lr=2 ** -10, steps=1, seed=0):
+    """{width: RMS change of the output on X_val[:256] after `steps` Adam steps on X_train[:128]}."""
+
+    # Unpack the training and validation datasets.
+    X_train, Y_train, X_val, Y_val = data
+
+    # Use fixed batches for every network width.
+    X_batch = X_train[:128]
+    Y_batch = Y_train[:128]
+    X_probe = X_val[:256]
+
+    # Store the RMS output changes for each width.
+    results = {}
+
+    # Evaluate each network width independently.
+    for width in widths:
+
+        # Build the model and its corresponding optimizer.
+        model = build_mlp(width, param, seed)
+        optimizer = make_optimizer(model, lr, param)
+
+        # Record the initial output on the fixed probe batch.
+        # Disable gradient tracking because this is only an evaluation.
+        with torch.no_grad():
+            initial_output = model(X_probe).clone()
+
+        # Perform the specified number of Adam optimization steps.
+        for _ in range(steps):
+
+            # Clear gradients from the previous optimization step.
+            optimizer.zero_grad()
+
+            # Calculate predictions on the fixed training batch.
+            predictions = model(X_batch)
+
+            # Calculate mean squared error across all entries.
+            loss = torch.mean((predictions - Y_batch) ** 2)
+
+            # Compute gradients and update model parameters.
+            loss.backward()
+            optimizer.step()
+
+        # Measure the output again after optimization.
+        with torch.no_grad():
+            final_output = model(X_probe)
+
+        # Calculate the root mean square change across all
+        # probe samples and output dimensions.
+        rms_change = torch.sqrt(
+            torch.mean((final_output - initial_output) ** 2)
+        )
+
+        # Store the result as a standard Python float.
+        results[width] = float(rms_change.item())
+
+    return results
 
 # Step 4 - train_run (not yet solved)
 # TODO: implement
