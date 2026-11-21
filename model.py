@@ -85,8 +85,50 @@ def build_mlp(width, param, seed, base_width=BASE_WIDTH):
 
     return model
 
-# Step 2 - make_optimizer (not yet solved)
-# TODO: implement
+# Step 2 - make_optimizer
+def make_optimizer(model, lr, param, base_width=BASE_WIDTH):
+    """Adam with the input layer in one group and the other weights, scaled for muP, in another."""
+
+    # Validate the parametrization.
+    if param not in ("sp", "mup"):
+        raise ValueError("param must be either 'sp' or 'mup'.")
+
+    # Obtain the hidden width from the input layer.
+    width = model[0].out_features
+
+    # Parameter group 1: input layer weights.
+    # The input layer always uses the original learning rate.
+    input_params = [model[0].weight]
+
+    # Parameter group 2: weights of all remaining linear layers.
+    other_params = [
+        layer.weight
+        for layer in model
+        if isinstance(layer, nn.Linear) and layer is not model[0]
+    ]
+
+    # Calculate the learning rate for the remaining layers.
+    if param == "mup":
+        other_lr = lr * base_width / width
+    else:
+        other_lr = lr
+
+    # Create Adam with exactly two parameter groups.
+    # All other Adam settings retain their default values.
+    optimizer = torch.optim.Adam(
+        [
+            {
+                "params": input_params,
+                "lr": lr
+            },
+            {
+                "params": other_params,
+                "lr": other_lr
+            }
+        ]
+    )
+
+    return optimizer
 
 # Step 3 - coord_check (not yet solved)
 # TODO: implement

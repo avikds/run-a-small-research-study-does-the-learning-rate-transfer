@@ -11,7 +11,7 @@ python scaffold.py
 ## Steps
 
 - [x] **1.** build_mlp
-- [ ] **2.** make_optimizer
+- [x] **2.** make_optimizer
 - [ ] **3.** coord_check
 - [ ] **4.** train_run
 - [ ] **5.** lr_sweep
