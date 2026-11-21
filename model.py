@@ -599,8 +599,44 @@ def stability_edge(points, best_log2):
         "headroom": headroom
     }
 
-# Step 10 - lr_width_fit (not yet solved)
-# TODO: implement
+# Step 10 - lr_width_fit
+def lr_width_fit(widths, log2_lrs, new_width):
+    """Slope and intercept of log2(best lr) against log2(width), and the prediction at new_width."""
+
+    # Convert widths and optimal learning rates into NumPy arrays.
+    widths = np.asarray(widths, dtype=float)
+    log2_lrs = np.asarray(log2_lrs, dtype=float)
+
+    # Ensure that the input arrays have matching lengths.
+    if widths.ndim != 1 or log2_lrs.ndim != 1:
+        raise ValueError("widths and log2_lrs must be one-dimensional.")
+
+    if len(widths) != len(log2_lrs):
+        raise ValueError("widths and log2_lrs must have the same length.")
+
+    if len(widths) < 2:
+        raise ValueError("At least two observations are required for fitting.")
+
+    if np.any(widths <= 0) or new_width <= 0:
+        raise ValueError("All widths must be positive.")
+
+    # Transform network widths into log2 space.
+    x = np.log2(widths)
+
+    # Fit a least-squares linear model:
+    # log2(best_lr) = intercept + slope * log2(width).
+    slope, intercept = np.polyfit(x, log2_lrs, 1)
+
+    # Predict the optimal log2 learning rate at the new width.
+    predicted_log2_lr = intercept + slope * np.log2(new_width)
+
+    # Return the fitted parameters and prediction.
+    # Round all numerical results to three decimal places.
+    return {
+        "slope": round(float(slope), 3),
+        "intercept": round(float(intercept), 3),
+        "predicted_log2_lr": round(float(predicted_log2_lr), 3)
+    }
 
 # Step 11 - transfer_study (not yet solved)
 # TODO: implement
