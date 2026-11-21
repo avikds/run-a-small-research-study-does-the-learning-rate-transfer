@@ -14,7 +14,7 @@ python scaffold.py
 - [x] **2.** make_optimizer
 - [x] **3.** coord_check
 - [x] **4.** train_run
-- [ ] **5.** lr_sweep
+- [x] **5.** lr_sweep
 - [ ] **6.** summarize
 - [ ] **7.** best_lr
 - [ ] **8.** paired_penalty

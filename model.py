@@ -282,8 +282,51 @@ def train_run(width, param, lr, seed, data, steps=300, batch_size=128):
         "steps_done": steps_done
     }
 
-# Step 5 - lr_sweep (not yet solved)
-# TODO: implement
+# Step 5 - lr_sweep
+def lr_sweep(params, widths, lrs, seeds, data, steps=300, batch_size=128):
+    """One row per (param, width, lr, seed) run, in that loop order."""
+
+    # Store the results of all training runs.
+    rows = []
+
+    # Iterate over parametrizations first.
+    for param in params:
+
+        # Iterate over network widths.
+        for width in widths:
+
+            # Iterate over learning rates.
+            for lr in lrs:
+
+                # Iterate over random seeds (fastest-changing variable).
+                for seed in seeds:
+
+                    # Train one model with the current configuration.
+                    result = train_run(
+                        width=width,
+                        param=param,
+                        lr=lr,
+                        seed=seed,
+                        data=data,
+                        steps=steps,
+                        batch_size=batch_size
+                    )
+
+                    # Store the configuration and training results.
+                    row = {
+                        "param": param,
+                        "width": width,
+                        "lr": lr,
+                        "seed": seed,
+                        "val_loss": result["val_loss"],
+                        "per_example": result["per_example"],
+                        "diverged": result["diverged"]
+                    }
+
+                    # Append the current run to the results list.
+                    rows.append(row)
+
+    return rows
 
 # Step 6 - summarize (not yet solved)
 # TODO: implement
