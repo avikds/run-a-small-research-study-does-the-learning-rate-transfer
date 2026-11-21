@@ -638,8 +638,138 @@ def lr_width_fit(widths, log2_lrs, new_width):
         "predicted_log2_lr": round(float(predicted_log2_lr), 3)
     }
 
-# Step 11 - transfer_study (not yet solved)
-# TODO: implement
+# Step 11 - transfer_study
+def transfer_study(rows, summary, small, big):
+    """Per parametrization: the cost at width `big` of the learning rate tuned at width `small`."""
+
+    # Collect all parametrizations and process them in sorted order.
+    params = sorted({param for param, width in summary.keys()})
+
+    # Store the transfer experiment results.
+    results = {}
+
+    for param in params:
+
+        # Obtain the summarized learning-rate curves for both widths.
+        small_curve = summary[(param, small)]
+        big_curve = summary[(param, big)]
+
+        # Find the best tested learning rate at the smaller width.
+        tuned = best_lr(small_curve)["grid_lr"]
+
+        # Find the independently optimized learning rate at the larger width.
+        own = best_lr(big_curve)["grid_lr"]
+
+        # Calculate the corresponding optimal rates in log2 space.
+        # A missing optimum is represented by None.
+        entry = {
+            "tuned_log2": (
+                round(math.log2(tuned), 3)
+                if tuned is not None else None
+            ),
+            "big_best_log2": (
+                round(math.log2(own), 3)
+                if own is not None else None
+            )
+        }
+
+        # A transfer experiment cannot be performed without
+        # a valid learning rate tuned at the smaller width.
+        if tuned is None:
+            raise ValueError(
+                f"No stable learning rate found at width {small} "
+                f"for parametrization {param!r}."
+            )
+
+        # Locate the point corresponding to the transferred learning rate
+        # in the larger network's summarized learning-rate curve.
+        tuned_point = next(
+            (
+                point for point in big_curve
+                if point["lr"] == tuned
+            ),
+            None
+        )
+
+        if tuned_point is None:
+            raise ValueError(
+                f"Learning rate {tuned} is missing from the "
+                f"width {big} curve for parametrization {param!r}."
+            )
+
+        # Case 1: The transferred learning rate causes divergence.
+        if tuned_point["diverged"]:
+
+            entry["diverged"] = True
+            entry["penalty"] = None
+
+        # Case 2: The transferred learning rate is already
+        # the larger network's own best grid learning rate.
+        elif tuned == own:
+
+            entry["diverged"] = False
+
+            # No performance difference exists when both settings
+            # use exactly the same learning rate.
+            entry["penalty"] = {
+                "diff": 0.0,
+                "ci": (0.0, 0.0),
+                "per_seed": [],
+                "verdict": "same lr"
+            }
+
+        # Case 3: The transferred and independently optimized
+        # learning rates are different.
+        else:
+
+            # Collect the large-width runs using the transferred
+            # learning rate, sorted by increasing random seed.
+            runs_a = sorted(
+                [
+                    row for row in rows
+                    if row["param"] == param
+                    and row["width"] == big
+                    and row["lr"] == tuned
+                ],
+                key=lambda row: row["seed"]
+            )
+
+            # Collect the large-width runs using its own
+            # optimal grid learning rate.
+            runs_b = sorted(
+                [
+                    row for row in rows
+                    if row["param"] == param
+                    and row["width"] == big
+                    and row["lr"] == own
+                ],
+                key=lambda row: row["seed"]
+            )
+
+            # Ensure that both configurations contain matching seeds.
+            seeds_a = [row["seed"] for row in runs_a]
+            seeds_b = [row["seed"] for row in runs_b]
+
+            if seeds_a != seeds_b:
+                raise ValueError(
+                    "Transferred and optimal learning-rate runs "
+                    "must contain matching seeds."
+                )
+
+            # Extract the per-example validation losses for each seed.
+            a = [row["per_example"] for row in runs_a]
+            b = [row["per_example"] for row in runs_b]
+
+            # Calculate the paired validation-loss penalty.
+            penalty = paired_penalty(a, b)
+
+            entry["diverged"] = False
+            entry["penalty"] = penalty
+
+        # Store the result for the current parametrization.
+        results[param] = entry
+
+    return results
 
 # Step 12 - write_conclusion (not yet solved)
 # TODO: implement
