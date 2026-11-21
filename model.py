@@ -771,6 +771,128 @@ def transfer_study(rows, summary, small, big):
 
     return results
 
-# Step 12 - write_conclusion (not yet solved)
-# TODO: implement
+# Step 12 - write_conclusion
+NAMES = {
+    "sp": "Standard parametrization",
+    "mup": "muP"
+}
+
+
+def write_conclusion(study, slopes, small, big):
+    """The claims the evidence supports, one string per line."""
+
+    # Store the final research conclusions.
+    conclusions = []
+
+    # Track whether each parametrization successfully transfers.
+    transfer_status = {}
+
+    # Generate one conclusion for each parametrization in sorted order.
+    for param in sorted(study):
+
+        name = NAMES.get(param, param)
+        entry = study[param]
+
+        diverged = entry["diverged"]
+        penalty = entry["penalty"]
+
+        verdict = penalty["verdict"] if penalty is not None else None
+
+        # Case 1: The transferred learning rate causes divergence.
+        if diverged:
+
+            conclusions.append(
+                f"{name}: the learning rate tuned at width {small} "
+                f"diverges at width {big}."
+            )
+
+            transfer_status[param] = False
+
+        # Case 2: Both widths have the same best learning rate.
+        elif verdict == "same lr":
+
+            conclusions.append(
+                f"{name}: width {big} has the same best learning rate "
+                f"as width {small}."
+            )
+
+            transfer_status[param] = True
+
+        # Case 3: The transferred learning rate has a significantly
+        # higher validation loss.
+        elif verdict == "a is worse":
+
+            diff = penalty["diff"]
+            lo, hi = penalty["ci"]
+            k = len(penalty["per_seed"])
+
+            conclusions.append(
+                f"{name}: the learning rate tuned at width {small} "
+                f"costs {diff:+.4f} validation loss at width {big} "
+                f"(95% CI {lo:.4f} to {hi:.4f}, "
+                f"worse on all {k} seeds)."
+            )
+
+            transfer_status[param] = False
+
+        # Case 4: No measurable transfer penalty was established.
+        else:
+
+            diff = penalty["diff"]
+            lo, hi = penalty["ci"]
+
+            conclusions.append(
+                f"{name}: no measurable cost from the learning rate "
+                f"tuned at width {small} "
+                f"({diff:+.4f}, 95% CI {lo:.4f} to {hi:.4f})."
+            )
+
+            transfer_status[param] = True
+
+    # Report the fitted learning-rate scaling slopes.
+    for param in sorted(slopes):
+
+        name = NAMES.get(param, param)
+        slope = slopes[param]
+
+        conclusions.append(
+            f"{name}: best log2 learning rate changes by "
+            f"{slope:+.2f} per doubling of width."
+        )
+
+    # Check whether both parametrizations were evaluated.
+    both_available = (
+        "mup" in transfer_status and "sp" in transfer_status
+    )
+
+    mup_transfers = transfer_status.get("mup", False)
+    sp_transfers = transfer_status.get("sp", False)
+
+    # Generate the overall research conclusion.
+    if both_available and mup_transfers and not sp_transfers:
+
+        final_conclusion = (
+            "Conclusion: on this task the learning rate transfers "
+            "from small to large width under muP and not under "
+            "the standard parametrization."
+        )
+
+    elif both_available and mup_transfers and sp_transfers:
+
+        final_conclusion = (
+            "Conclusion: the learning rate transfers under both "
+            "parametrizations here, so this task does not separate them."
+        )
+
+    else:
+
+        final_conclusion = (
+            "Conclusion: inconclusive; muP did not transfer "
+            "the learning rate on this task."
+        )
+
+    # Append the overall conclusion as the final line.
+    conclusions.append(final_conclusion)
+
+    return conclusions
 

@@ -21,7 +21,7 @@ python scaffold.py
 - [x] **9.** stability_edge
 - [x] **10.** lr_width_fit
 - [x] **11.** transfer_study
-- [ ] **12.** write_conclusion
+- [x] **12.** write_conclusion
 
 ---
 
