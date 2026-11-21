@@ -400,8 +400,84 @@ def summarize(rows):
 
     return summary
 
-# Step 7 - best_lr (not yet solved)
-# TODO: implement
+# Step 7 - best_lr
+def best_lr(points):
+    """The grid minimum and a parabola-vertex estimate of the best log2 learning rate."""
+
+    # Handle the case where all learning-rate points diverged.
+    valid_points = [
+        point for point in points
+        if not point["diverged"]
+    ]
+
+    if not valid_points:
+        return {
+            "grid_lr": None,
+            "log2_lr": None,
+            "status": "all diverged"
+        }
+
+    # Find the non-diverged point with the lowest mean validation loss.
+    # Python's min() preserves the earliest point when values are tied.
+    best_point = min(
+        valid_points,
+        key=lambda point: point["mean"]
+    )
+
+    # Record the best tested learning rate.
+    grid_lr = best_point["lr"]
+
+    # Find the position of the best point in the original curve.
+    best_index = points.index(best_point)
+
+    # Check whether the best point is at the boundary of the curve.
+    if best_index == 0 or best_index == len(points) - 1:
+        return {
+            "grid_lr": grid_lr,
+            "log2_lr": round(math.log2(grid_lr), 3),
+            "status": "edge"
+        }
+
+    # Obtain the immediate left and right neighbours.
+    left_point = points[best_index - 1]
+    right_point = points[best_index + 1]
+
+    # Avoid interpolation if either neighbouring point diverged.
+    if left_point["diverged"] or right_point["diverged"]:
+        return {
+            "grid_lr": grid_lr,
+            "log2_lr": round(math.log2(grid_lr), 3),
+            "status": "edge"
+        }
+
+    # Prepare the three points for quadratic interpolation.
+    # Use log2 learning rates as the x-coordinates.
+    x = np.array([
+        math.log2(left_point["lr"]),
+        math.log2(best_point["lr"]),
+        math.log2(right_point["lr"])
+    ])
+
+    # Use mean validation losses as the y-coordinates.
+    y = np.array([
+        left_point["mean"],
+        best_point["mean"],
+        right_point["mean"]
+    ])
+
+    # Fit a quadratic polynomial: y = ax^2 + bx + c.
+    a, b, c = np.polyfit(x, y, 2)
+
+    # Calculate the vertex of the fitted parabola.
+    # The vertex estimates the optimal log2 learning rate.
+    estimated_log2_lr = -b / (2 * a)
+
+    # Return the grid minimum and interpolated estimate.
+    return {
+        "grid_lr": grid_lr,
+        "log2_lr": round(float(estimated_log2_lr), 3),
+        "status": "fit"
+    }
 
 # Step 8 - paired_penalty (not yet solved)
 # TODO: implement

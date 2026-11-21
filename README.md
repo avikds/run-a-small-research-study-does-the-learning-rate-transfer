@@ -16,7 +16,7 @@ python scaffold.py
 - [x] **4.** train_run
 - [x] **5.** lr_sweep
 - [x] **6.** summarize
-- [ ] **7.** best_lr
+- [x] **7.** best_lr
 - [ ] **8.** paired_penalty
 - [ ] **9.** stability_edge
 - [ ] **10.** lr_width_fit
