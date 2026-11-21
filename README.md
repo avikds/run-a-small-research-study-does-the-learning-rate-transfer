@@ -18,7 +18,7 @@ python scaffold.py
 - [x] **6.** summarize
 - [x] **7.** best_lr
 - [x] **8.** paired_penalty
-- [ ] **9.** stability_edge
+- [x] **9.** stability_edge
 - [ ] **10.** lr_width_fit
 - [ ] **11.** transfer_study
 - [ ] **12.** write_conclusion

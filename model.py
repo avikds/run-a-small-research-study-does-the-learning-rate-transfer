@@ -556,8 +556,48 @@ def paired_penalty(runs_a, runs_b, n_boot=2000, seed=0):
         "verdict": verdict
     }
 
-# Step 9 - stability_edge (not yet solved)
-# TODO: implement
+# Step 9 - stability_edge
+def stability_edge(points, best_log2):
+    """The largest learning rate below the first divergence, and its distance from the best one."""
+
+    # Sort the learning-rate points in ascending order.
+    sorted_points = sorted(points, key=lambda point: point["lr"])
+
+    # Track the last learning rate that completed without divergence.
+    last_stable_lr = None
+
+    # Walk through the learning-rate curve from smallest to largest.
+    for point in sorted_points:
+
+        # Stop at the first learning rate where training diverged.
+        if point["diverged"]:
+            break
+
+        # Update the largest stable learning rate observed so far.
+        last_stable_lr = point["lr"]
+
+    # Handle the case where no stable learning rate was found.
+    # This includes an empty curve or a curve whose first point diverged.
+    if last_stable_lr is None:
+        max_stable_log2 = None
+
+    else:
+        # Convert the largest stable learning rate to log2 space.
+        max_stable_log2 = round(math.log2(last_stable_lr), 3)
+
+    # Calculate the distance between the stability boundary
+    # and the estimated optimal learning rate.
+    if max_stable_log2 is None or best_log2 is None:
+        headroom = None
+
+    else:
+        headroom = round(max_stable_log2 - best_log2, 3)
+
+    # Return the stability boundary and available headroom.
+    return {
+        "max_stable_log2": max_stable_log2,
+        "headroom": headroom
+    }
 
 # Step 10 - lr_width_fit (not yet solved)
 # TODO: implement
